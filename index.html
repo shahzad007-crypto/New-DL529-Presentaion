@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tokenomics Design for RWA Protocols - UNIC</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-gold: #c5a059;
+            --accent-green: #4CAF50;
+            --bg-dark: #0a0a0a;
+            --card-bg: #161616;
+            --text-main: #ffffff;
+            --text-dim: #b0b0b0;
+            --slide-w: 1280px;
+            --slide-h: 720px;
+            /* Diagram specific colors */
+            --diag-blue: #2563eb;
+            --diag-violet: #7c3aed;
+            --diag-green: #16a34a;
+            --diag-yellow: #facc15;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body, html { 
+            height: 100%; 
+            background: #000; 
+            font-family: 'Lato', sans-serif; 
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* Slide Container - Fixed Aspect Ratio */
+        .presentation-wrapper {
+            width: var(--slide-w);
+            height: var(--slide-h);
+            background: var(--card-bg);
+            border: 2px solid #333;
+            position: relative;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .slide {
+            flex: 1;
+            padding: 40px 80px;
+            display: none;
+            flex-direction: column;
+            position: relative;
+            z-index: 5;
+            overflow-y: auto;
+        }
+
+        .slide.active { display: flex; animation: slideIn 0.3s ease-out; }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* Decorative Backgrounds */
+        .blob {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.15;
+            pointer-events: none;
+        }
+        .blob-gold { background: var(--primary-gold); top: -150px; right: -100px; }
+        .blob-green { background: var(--accent-green); bottom: -150px; left: -100px; }
+
+        /* Typography - 32px Bold Requirement */
+        h1.title-main { 
+            font-family: 'Poppins', sans-serif; 
+            font-size: 64px; 
+            line-height: 1.1; 
+            color: #fff; 
+            margin-bottom: 20px;
+        }
+
+        h2.slide-header {
+            font-family: 'Poppins', sans-serif;
+            font-size: 48px;
+            color: var(--primary-gold);
+            margin-bottom: 20px;
+            border-left: 10px solid var(--primary-gold);
+            padding-left: 20px;
+            text-transform: uppercase;
+        }
+
+        p, li, td, th { 
+            font-size: 32px; 
+            font-weight: 700; 
+            line-height: 1.35; 
+            margin-bottom: 15px;
+        }
+
+        .highlight { color: var(--primary-gold); }
+        .success { color: var(--accent-green); }
+        .warning { color: #ff9800; }
+        .danger { color: #f44336; }
+
+        ul { list-style: none; }
+        li { position: relative; padding-left: 45px; margin-bottom: 20px; }
+        li::before {
+            content: "\f105";
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+            position: absolute;
+            left: 0;
+            color: var(--primary-gold);
+        }
+
+        /* Layout Helpers */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
+        .visual-box {
+            background: rgba(255,255,255,0.03);
+            border: 2px solid #444;
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        /* DIAGRAM STYLES - Optimized for Slide 7 Fit */
+        .diag-container { display: flex; justify-content: space-between; margin-top: 10px; width: 100%; gap: 15px; }
+        .track { width: 49%; background: #1e293b; padding: 12px; border-radius: 10px; border: 1px solid #334155; }
+        .track-title { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 10px; color: var(--diag-yellow); font-family: 'Poppins', sans-serif; }
+        .stage { background: var(--diag-blue); margin: 6px 0; padding: 8px; border-radius: 6px; text-align: center; font-size: 16px; font-weight: bold; line-height: 1.1; }
+        .stage.offchain { background: var(--diag-violet); }
+        .stage.final { background: var(--diag-green); }
+        .arrow { text-align: center; font-size: 16px; color: var(--diag-yellow); margin: -4px 0; }
+        .caption { font-size: 13px; font-weight: normal; color: #e2e8f0; margin-top: 2px; }
+        .spacer { height: 120px; }
+
+        /* Navigation Controls - Relocated to extreme corners to avoid overlap */
+        .controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            pointer-events: none; /* Allow interaction with slide content below if needed */
+            z-index: 9999;
+        }
+
+        .nav-btn {
+            position: absolute;
+            bottom: 30px;
+            background: var(--primary-gold);
+            color: #000;
+            border: 2px solid var(--primary-gold);
+            padding: 12px 35px;
+            font-size: 20px;
+            font-weight: 900;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            pointer-events: auto; /* Enable clicks on the buttons */
+        }
+        
+        #prevBtn { left: 30px; }
+        #nextBtn { right: 30px; }
+
+        .nav-btn:hover { 
+            background: #fff; 
+            border-color: #fff;
+            transform: translateY(-5px); 
+            box-shadow: 0 15px 30px rgba(0,0,0,0.6);
+        }
+        
+        .nav-btn:active { transform: translateY(0); }
+
+        .nav-btn:disabled { 
+            background: #333; 
+            color: #666; 
+            border-color: #333;
+            cursor: not-allowed; 
+            transform: none;
+            box-shadow: none;
+        }
+
+        .progress-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 10px;
+            background: var(--primary-gold);
+            width: 0%;
+            transition: width 0.3s linear;
+            z-index: 100;
+        }
+
+        .slide-counter {
+            position: absolute;
+            bottom: 35px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 20px;
+            font-weight: 900;
+            color: var(--text-dim);
+            letter-spacing: 2px;
+        }
+
+        /* Mathematical Notation */
+        .math-block {
+            background: #000;
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid var(--accent-green);
+            color: var(--accent-green);
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 40px;
+            margin: 20px 0;
+            text-align: center;
+            font-weight: 900;
+        }
+
+        /* Scenarios Table */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background: var(--primary-gold); color: #000; padding: 12px; text-align: left; font-size: 26px; }
+        td { padding: 12px; border-bottom: 1px solid #444; font-size: 26px; font-weight: 700; }
+    </style>
+</head>
+<body>
+
+    <div class="presentation-wrapper">
+        <div class="blob blob-gold"></div>
+        <div class="blob blob-green"></div>
+
+        <!-- SLIDE 1 -->
+        <div class="slide active">
+            <p style="letter-spacing: 8px; color: var(--primary-gold); margin-bottom: 10px; font-weight: 900;">UNIVERSITY OF NICOSIA | BLOC-529</p>
+            <h1 class="title-main">Tokenomics Design for Stablecoin-Backed RWA Protocols</h1>
+            <p style="font-size: 40px; margin-bottom: 50px; color: var(--text-dim);">Course: BLOC529DL | FALL 2025</p>
+            <div class="grid-2" style="background: rgba(255,255,255,0.05); padding: 40px; border-radius: 20px;">
+                <div>
+                    <p class="highlight">Sibileau Lucia</p>
+                    <p style="font-size: 24px; color: var(--text-dim);">U244N1250 | lucia.sibileau@gmail.com</p>
+                </div>
+                <div>
+                    <p class="highlight">Muhammad Shahzad</p>
+                    <p style="font-size: 24px; color: var(--text-dim);">U244N1182 | shahzad.m@live.unic.ac.cy</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 2 -->
+        <div class="slide">
+            <h2 class="slide-header">What Is Asset Tokenization?</h2>
+            <div class="grid-2">
+                <ul>
+                    <li>Digital tokens on a <span class="highlight">Blockchain</span></li>
+                    <li>Verified Legal and Economic rights</li>
+                    <li>Linked to <span class="highlight">Off-chain</span> real assets</li>
+                    <li>Automated via Smart Contracts</li>
+                </ul>
+                <div class="visual-box">
+                    <i class="fas fa-link" style="font-size: 100px; color: var(--primary-gold); margin-bottom: 20px;"></i>
+                    <p>Bridges Physical Assets with DeFi Efficiency</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 3 -->
+        <div class="slide">
+            <h2 class="slide-header">Strategic Rationale: Fine Art</h2>
+            <div class="grid-2">
+                <ul>
+                    <li>Traditionally <span class="highlight">Illiquid</span> Market</li>
+                    <li>Extreme Capital Entry Barriers</li>
+                    <li>Access limited to Gallery Elite</li>
+                    <li>Tokenization enables <span class="success">Fractionalization</span></li>
+                </ul>
+                <div class="visual-box">
+                    <i class="fas fa-palette" style="font-size: 100px; color: var(--accent-green); margin-bottom: 20px;"></i>
+                    <p>Lowering Investment Minimums</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 4 -->
+        <div class="slide">
+            <h2 class="slide-header">Case Study: Picasso (2021)</h2>
+            <div class="grid-2">
+                <div>
+                    <p>Artwork: <span class="highlight">Fillette au béret</span></p>
+                    <p>Issuer: <span class="highlight">Sygnum Bank</span> (Swiss)</p>
+                    <p>Tokens: AST Security Tokens</p>
+                    <p class="success">Yield: ~15% market return</p>
+                </div>
+                <div class="visual-box" style="border-color: var(--primary-gold);">
+                    <p style="font-size: 28px; color: var(--text-dim);">Jurisdiction:</p>
+                    <p style="font-size: 50px; color: #fff; font-weight: 900;">SWITZERLAND</p>
+                    <p class="highlight">Swiss DLT Act Compliance</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 5 -->
+        <div class="slide">
+            <h2 class="slide-header">Stablecoins: The Settlement Rail</h2>
+            <p>Stablecoins act as the <span class="highlight">Infrastructure Rail</span>, not the product.</p>
+            <div class="grid-2" style="margin-top: 30px;">
+                <div class="visual-box">
+                    <h3 class="highlight">Subscriptions</h3>
+                    <p style="font-size: 28px;">Investors fund using Stablecoins</p>
+                </div>
+                <div class="visual-box">
+                    <h3 class="success">Distributions</h3>
+                    <p style="font-size: 28px;">Exits/Yields paid in Stablecoins</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 6 -->
+        <div class="slide">
+            <h2 class="slide-header">Compliance Standards</h2>
+            <div class="grid-2">
+                <ul>
+                    <li><span class="highlight">ERC-3643:</span> Identity T-REX Standard</li>
+                </ul>
+                <div class="visual-box">
+                    <i class="fas fa-user-shield" style="font-size: 100px; margin-bottom: 20px;"></i>
+                    <p>Whitelisted Wallets Only</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 7: INTEGRATED ARCHITECTURE DIAGRAM -->
+        <div class="slide">
+            <h2 class="slide-header">Architecture: Off-Chain vs On-Chain</h2>
+            <div class="diag-container">
+                <!-- ON-CHAIN TRACK -->
+                <div class="track">
+                    <div class="track-title">ON-CHAIN (Blockchain Layer)</div>
+                    <div class="spacer"></div>
+                    <div class="stage">Investor Wallet Whitelisting<div class="caption">Approved wallets linked to verified identities</div></div>
+                    <div class="arrow">↓</div>
+                    <div class="stage">Token Issuance<div class="caption">Art tokens minted as DLT securities</div></div>
+                    <div class="arrow">↓</div>
+                    <div class="stage">Investor Subscription<div class="caption">Investors pay using stablecoins</div></div>
+                    <div class="arrow">↓</div>
+                    <div class="stage">Operating Reserve Accounting<div class="caption">Fees collected, costs tracked</div></div>
+                    <div class="arrow">↓</div>
+                    <div class="stage">Secondary Market Trading<div class="caption">Permissioned trading windows</div></div>
+                    <div class="arrow">↓</div>
+                    <div class="stage">Stablecoin Settlement<div class="caption">Payments and distributions executed</div></div>
+                    <div class="arrow">↓</div>
+                    <div class="stage final">Token Redemption & Burn<div class="caption">Tokens destroyed after final payout</div></div>
+                </div>
+                <!-- OFF-CHAIN TRACK -->
+                <div class="track">
+                    <div class="track-title">OFF-CHAIN (Legal & Art Layer)</div>
+                    <div class="stage offchain">Artwork Selection<div class="caption">Advisor verifies authenticity & provenance</div></div>
+                    <div class="arrow">↓</div>
+                    <div class="stage offchain">Swiss SPV Creation<div class="caption">SPV acquires legal ownership</div></div>
+                    <div class="arrow">↓</div>
+                    <div class="stage offchain">Investor AML / KYC<div class="caption">Identity verification by compliance agent</div></div>
+                    <div class="arrow">↓</div>
+                    <div class="stage offchain">Professional Custody<div class="caption">Vaulting & condition monitoring</div></div>
+                    <div class="arrow">↓</div>
+                    <div class="stage offchain">Insurance Coverage<div class="caption">All-risk fine art insurance</div></div>
+                    <div class="arrow">↓</div>
+                    <div class="stage offchain">Exhibition (Optional)<div class="caption">Cultural display & revenue</div></div>
+                    <div class="arrow">↓</div>
+                    <div class="stage offchain">Artwork Sale<div class="caption">Private sale or auction</div></div>
+                    <div class="arrow">↓</div>
+                    <div class="stage final">Legal Settlement<div class="caption">Sale price confirmed & recorded</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 8 -->
+        <div class="slide">
+            <h2 class="slide-header">The Operating Reserve (On-Chain)</h2>
+            <p>A "Stablecoin Tank" funded at issuance to cover:</p>
+            <ul>
+                <li>Professional <span class="highlight">Custody</span> & Vaulting</li>
+                <li><span class="highlight">All-Risk</span> Insurance Premiums</li>
+                <li>Other operating costs such as SPV directors and administrative fees.</li>
+            </ul>
+            <p class="success" style="text-align: center; border-top: 2px solid #333; padding-top: 20px;">Prevents forced asset liquidation due to costs.</p>
+        </div>
+
+        <!-- SLIDE 9 -->
+        <div class="slide">
+            <h2 class="slide-header">Operating Reserve Mechanism</h2>
+            <div class="grid-2">
+                <div class="visual-box" style="border-color: var(--accent-green);">
+                    <h3 class="success">Inflow (+)</h3>
+                    <p>Secondary Trading Fees</p>
+                    <p>Exhibition/Loan Revenue</p>
+                </div>
+                <div class="visual-box" style="border-color: var(--danger);">
+                    <h3 class="danger">Outflow (-)</h3>
+                    <p>Insurance Costs</p>
+                    <p>custody costs or vault costs</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 10 -->
+        <div class="slide">
+            <h2 class="slide-header">Mathematical Model Goals</h2>
+            <p>Objective: Economic simulation of art tokenization.</p>
+            <ul>
+                <li>Simulate <span class="highlight">Reserve Sufficiency</span></li>
+                <li>Analyze <span class="highlight">Liquidity Windows</span></li>
+                <li>Calculate <span class="highlight">Net Terminal Value</span></li>
+            </ul>
+        </div>
+
+        <!-- SLIDE 11 -->
+        <div class="slide">
+            <h2 class="slide-header">Key State Variables</h2>
+            <table style="background: rgba(0,0,0,0.3);">
+                <tr><th>Variable</th><th>Definition</th></tr>
+                <tr><td>V<sub>t</sub></td><td>Off-chain artwork appraisal value</td></tr>
+                <tr><td>R<sub>t</sub></td><td>On-chain Operating Reserve (Stablecoins)</td></tr>
+                <tr><td>P<sub>t</sub></td><td>Secondary-market token price</td></tr>
+                <tr><td>C<sub>t</sub></td><td>Periodic operating costs</td></tr>
+            </table>
+        </div>
+
+        <!-- SLIDE 12 -->
+        <div class="slide">
+            <h2 class="slide-header">Reserve Dynamics Equation</h2>
+            <div class="math-block">R(t+1) = R(t) + Fees(t) - C(t)</div>
+            <ul>
+                <li>Designed for <span class="highlight">~3.5 years</span> operational runway</li>
+                <li>Trigger mechanism: If R<sub>t</sub> drops, sale initiates</li>
+            </ul>
+        </div>
+
+        <!-- SLIDE 13 -->
+        <div class="slide">
+            <h2 class="slide-header">Secondary Market Design</h2>
+            <div class="grid-2">
+                <div class="visual-box">
+                    <h3>Liquidity Windows</h3>
+                    <p>Two periods per year</p>
+                </div>
+                <div class="visual-box">
+                    <h3>Volume Limit</h3>
+                    <p>Max 2% Cap per window</p>
+                </div>
+            </div>
+            <p style="margin-top: 40px; text-align: center;">Stabilizes price discovery.</p>
+        </div>
+
+        <!-- SLIDE 14 -->
+        <div class="slide">
+            <h2 class="slide-header">Reserve Sufficiency Triggers</h2>
+            <ul>
+                <li><span class="warning">Early Sale Trigger:</span> Reserve falls below 6 months</li>
+                <li><span class="danger">Survival Threshold:</span> Accelerated exit required</li>
+                <li><span class="success">Bridge Funding:</span> Optional SPV-level credit line</li>
+            </ul>
+        </div>
+
+        <!-- SLIDE 15 -->
+        <div class="slide">
+            <h2 class="slide-header">Terminal Exit Process</h2>
+            <div class="visual-box">
+                <p>1. Artwork sold off-chain (Auction/Private)</p>
+                <i class="fas fa-arrow-down"></i>
+                <p>2. Deduct Closing & Wind-down Costs</p>
+                <i class="fas fa-arrow-down"></i>
+                <p>3. Distribute Net Proceeds via Stablecoins</p>
+            </div>
+        </div>
+
+        <!-- SLIDE 16 -->
+        <div class="slide">
+            <h2 class="slide-header">Distribution Waterfall</h2>
+            <ul>
+                <li>1. Repay SPV-level debt (if any)</li>
+                <li>2. Deduct Sales Agent & Admin Fees</li>
+                <li>3. Payout Net Proceeds via Stablecoins</li>
+                <li>4. <span class="danger">Token redeemed and then burned</span></li>
+            </ul>
+        </div>
+
+        <!-- SLIDE 17 -->
+        <div class="slide">
+            <h2 class="slide-header">Scenario: Normal Market</h2>
+            <ul>
+                <li>Steady secondary market fee accumulation</li>
+                <li>Artwork appraisal grows at historical rate</li>
+                <li>Operating reserve remains <span class="success">Solvent</span></li>
+                <li>Planned exit at Terminal Time T</li>
+            </ul>
+        </div>
+
+        <!-- SLIDE 18 -->
+        <div class="slide">
+            <h2 class="slide-header">Scenario: Stress Market</h2>
+            <ul>
+                <li>Low trading volume → Low reserve fees</li>
+                <li>Prolonged time-to-sell artwork (higher carry cost)</li>
+                <li><span class="warning">Trigger:</span> Early sale initiation likely</li>
+            </ul>
+        </div>
+
+        <!-- SLIDE 19 -->
+        <div class="slide">
+            <h2 class="slide-header">Scenario: Black Swan Event</h2>
+            <ul>
+                <li>Extreme market shock / Artwork devaluation</li>
+                <li>Forced discount sale required</li>
+                <li><span class="danger">Result:</span> Possible partial loss of investor capital</li>
+                <li>Behaves like <span class="highlight">Equity</span> risk profile</li>
+            </ul>
+        </div>
+
+        <!-- SLIDE 20 -->
+        <div class="slide">
+            <h2 class="slide-header">Mitigating Protocol Risks</h2>
+            <ul>
+                <li><span class="highlight">No continuous Oracles:</span> Eliminates manipulation</li>
+                <li><span class="highlight">Event-Based Oracle:</span> Only at final exit settlement</li>
+                <li><span class="highlight">No De-Peg Exposure:</span> Assets are physical art</li>
+            </ul>
+        </div>
+
+        <!-- SLIDE 21 -->
+        <div class="slide">
+            <h2 class="slide-header">Governance & Responsibility</h2>
+            <div class="grid-2">
+                <div class="visual-box">
+                    <p style="font-size: 60px; font-weight: 900;">70%</p>
+                    <p>SPV (Issuer Board)</p>
+                </div>
+                <div class="visual-box">
+                    <p style="font-size: 60px; font-weight: 900;">30%</p>
+                    <p>Art Advisor</p>
+                </div>
+            </div>
+            <p style="margin-top: 30px; text-align: center;">Governance tied to Accountability.</p>
+        </div>
+
+        <!-- SLIDE 22 -->
+        <div class="slide">
+            <h2 class="slide-header">System Architecture</h2>
+            <div class="grid-2">
+                <div class="visual-box"><h3 class="highlight">On-Chain</h3><p>Fees, Ledger, Settlement</p></div>
+                <div class="visual-box"><h3 class="success">Off-Chain</h3><p>Custody, Insurance, Law</p></div>
+            </div>
+        </div>
+
+        <!-- SLIDE 23 -->
+        <div class="slide">
+            <h2 class="slide-header">Regulatory Takeaways</h2>
+            <ul>
+                <li>Securities law generally applies (STOs)</li>
+                <li>AML/KYC required for entry</li>
+                <li>Swiss DLT Act = <span class="highlight">Global Benchmark</span></li>
+                <li>MiCA provides future EU alignment</li>
+            </ul>
+        </div>
+
+        <!-- SLIDE 24 -->
+        <div class="slide">
+            <h2 class="slide-header">Key Conclusions</h2>
+            <ul>
+                <li><span class="highlight">Portfolio Diversification:</span> Offers private banking clients access to uncorrelated asset classes.</li>
+                <li><span class="highlight">The Expertise Factor:</span> Validates role of Art Advisor in selecting high-value assets.</li>
+                <li><span class="highlight">Market Democratization:</span> Enables smaller investors to own masterpieces.</li>
+                <li><span class="highlight">Controlled Liquidity:</span> Respects the unique, illiquid nature of art.</li>
+            </ul>
+        </div>
+
+        <!-- SLIDE 25 -->
+        <div class="slide">
+            <h2 class="slide-header">Cultural & Economic Synergy</h2>
+            <p style="margin-top: 20px;">Museums exhibit tokenized artworks, enriching public experience while generating value for the SPV.</p>
+            <div class="visual-box" style="margin-top: 50px;">
+                <i class="fas fa-landmark" style="font-size: 80px; color: var(--primary-gold); margin-bottom: 20px;"></i>
+                <p>Bridges Cultural Access with Sustainability</p>
+            </div>
+        </div>
+
+        <!-- SLIDE 26 -->
+        <div class="slide">
+            <h1 class="title-main" style="text-align: center; margin-top: 120px;">Questions & Discussion</h1>
+            <p style="text-align: center; color: var(--primary-gold); font-size: 40px;">Thank you for your attention.</p>
+            <div class="grid-2" style="text-align: center; margin-top: 100px;">
+                <p style="font-size: 30px;">Lucia Sibileau</p>
+                <p style="font-size: 30px;">Muhammad Shahzad</p>
+            </div>
+        </div>
+
+        <!-- PROGRESS & COUNTER -->
+        <div class="slide-counter">1 / 26</div>
+        <div class="progress-bar" id="progressBar"></div>
+        
+        <!-- NAVIGATION CONTROLS -->
+        <div class="controls">
+            <button class="nav-btn" id="prevBtn"><i class="fas fa-chevron-left"></i> Prev</button>
+            <button class="nav-btn" id="nextBtn">Next <i class="fas fa-chevron-right"></i></button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // Highly robust initialization logic
+            const initPresentation = () => {
+                const slides = document.querySelectorAll('.slide');
+                const nextBtn = document.getElementById('nextBtn');
+                const prevBtn = document.getElementById('prevBtn');
+                const counter = document.querySelector('.slide-counter');
+                const progress = document.getElementById('progressBar');
+                let currentSlide = 0;
+                const totalSlides = slides.length;
+
+                if (!slides.length || !nextBtn || !prevBtn) {
+                    console.error("Presentation elements not found.");
+                    return;
+                }
+
+                const updateDisplay = () => {
+                    // Update active classes
+                    slides.forEach((s, i) => {
+                        if (i === currentSlide) {
+                            s.classList.add('active');
+                            s.style.display = 'flex';
+                        } else {
+                            s.classList.remove('active');
+                            s.style.display = 'none';
+                        }
+                    });
+
+                    // Update UI components
+                    if (counter) counter.textContent = (currentSlide + 1) + " / " + totalSlides;
+                    if (progress) progress.style.width = ((currentSlide + 1) / totalSlides) * 100 + "%";
+                    
+                    // Update button states
+                    prevBtn.disabled = (currentSlide === 0);
+                    nextBtn.disabled = (currentSlide === totalSlides - 1);
+                };
+
+                // Attach button events
+                nextBtn.onclick = (e) => {
+                    e.preventDefault();
+                    if (currentSlide < totalSlides - 1) {
+                        currentSlide++;
+                        updateDisplay();
+                    }
+                };
+
+                prevBtn.onclick = (e) => {
+                    e.preventDefault();
+                    if (currentSlide > 0) {
+                        currentSlide--;
+                        updateDisplay();
+                    }
+                };
+
+                // Keyboard events
+                document.onkeydown = (e) => {
+                    if (e.key === "ArrowRight" || e.key === " ") {
+                        if (currentSlide < totalSlides - 1) {
+                            currentSlide++;
+                            updateDisplay();
+                        }
+                    } else if (e.key === "ArrowLeft") {
+                        if (currentSlide > 0) {
+                            currentSlide--;
+                            updateDisplay();
+                        }
+                    }
+                };
+
+                // Run initial update
+                updateDisplay();
+            };
+
+            // Execute immediately and on load for maximum reliability in various preview environments
+            initPresentation();
+            window.onload = initPresentation;
+        })();
+    </script>
+</body>
+</html>
